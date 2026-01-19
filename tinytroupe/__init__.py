@@ -273,6 +273,7 @@ if config["OpenAI"].get("API_TYPE") == "azure":
             deployment_name=default["embedding_model"],
             api_version=default["azure_embedding_model_api_version"],
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_key="",  # Empty string to bypass validation when using azure_ad_token_provider
             azure_ad_token_provider=token_provider,
             embed_batch_size=10)
 else:
