@@ -244,10 +244,37 @@ from llama_index.readers.web import SimpleWebPageReader
 ##)
 
 if config["OpenAI"].get("API_TYPE") == "azure":
-    llamaindex_openai_embed_model = AzureOpenAIEmbedding(model=default["embedding_model"],
-                                                        deployment_name=default["embedding_model"],
-                                                        api_version=default["azure_embedding_model_api_version"],
-                                                        embed_batch_size=10)
+    # Check if using API key or Entra ID authentication
+    if os.getenv("AZURE_OPENAI_KEY"):
+        logging.info("Using Azure OpenAI Service API with key for embeddings.")
+        llamaindex_openai_embed_model = AzureOpenAIEmbedding(
+            model=default["embedding_model"],
+            deployment_name=default["embedding_model"],
+            api_version=default["azure_embedding_model_api_version"],
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_key=os.getenv("AZURE_OPENAI_KEY"),
+            embed_batch_size=10)
+    else:  # Use Entra ID Auth
+        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+        # Support user-assigned managed identity with client ID
+        azure_client_id = os.getenv("AZURE_CLIENT_ID")
+        if azure_client_id:
+            logging.info(f"Using Azure OpenAI Service API with Entra ID Auth (managed identity client ID: {azure_client_id[:8]}...) for embeddings.")
+            credential = DefaultAzureCredential(managed_identity_client_id=azure_client_id)
+        else:
+            logging.info("Using Azure OpenAI Service API with Entra ID Auth for embeddings.")
+            credential = DefaultAzureCredential()
+
+        token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
+
+        llamaindex_openai_embed_model = AzureOpenAIEmbedding(
+            model=default["embedding_model"],
+            deployment_name=default["embedding_model"],
+            api_version=default["azure_embedding_model_api_version"],
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            azure_ad_token_provider=token_provider,
+            embed_batch_size=10)
 else:
     llamaindex_openai_embed_model = OpenAIEmbedding(model=default["embedding_model"], embed_batch_size=10)
 Settings.embed_model = llamaindex_openai_embed_model

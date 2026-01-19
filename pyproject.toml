@@ -22,11 +22,12 @@ classifiers = [
 ]
 
 dependencies = [
-    "pandas", 
+    "pandas",
     "pytest", "pytest-cov",
-    "openai >= 1.65", 
+    "openai >= 1.65",
     "tiktoken",
     "msal",
+    "azure-identity",
     "rich", "requests", "chevron",
     "llama-index", "llama-index-embeddings-huggingface", "llama-index-readers-web", "llama-index-embeddings-azure-openai",
     "pypandoc", "docx", "markdown",
