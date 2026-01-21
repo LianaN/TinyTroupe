@@ -52,7 +52,10 @@ class OpenAIClient:
         """
         Sets up the OpenAI API configurations for this client.
         """
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            max_retries=0  # Disable SDK retries, use TinyTroupe's retry logic instead
+        )
 
     @config_manager.config_defaults(
         model="model",
@@ -396,9 +399,12 @@ class AzureClient(OpenAIClient):
         """
         if os.getenv("AZURE_OPENAI_KEY"):
             logger.info("Using Azure OpenAI Service API with key.")
-            self.client = AzureOpenAI(azure_endpoint= os.getenv("AZURE_OPENAI_ENDPOINT"),
-                                    api_version = config["OpenAI"]["AZURE_API_VERSION"],
-                                    api_key = os.getenv("AZURE_OPENAI_KEY"))
+            self.client = AzureOpenAI(
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+                api_version=config["OpenAI"]["AZURE_API_VERSION"],
+                api_key=os.getenv("AZURE_OPENAI_KEY"),
+                max_retries=0  # Disable SDK retries, use TinyTroupe's retry logic instead
+            )
         else:  # Use Entra ID Auth
             from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
@@ -413,9 +419,10 @@ class AzureClient(OpenAIClient):
 
             token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
             self.client = AzureOpenAI(
-                azure_endpoint= os.getenv("AZURE_OPENAI_ENDPOINT"),
-                api_version = config["OpenAI"]["AZURE_API_VERSION"],
-                azure_ad_token_provider=token_provider
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+                api_version=config["OpenAI"]["AZURE_API_VERSION"],
+                azure_ad_token_provider=token_provider,
+                max_retries=0  # Disable SDK retries, use TinyTroupe's retry logic instead
             )
     
 
