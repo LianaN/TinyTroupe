@@ -406,16 +406,22 @@ class AzureClient(OpenAIClient):
                 max_retries=0  # Disable SDK retries, use TinyTroupe's retry logic instead
             )
         else:  # Use Entra ID Auth
-            from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+            from azure.identity import DefaultAzureCredential, AzureCliCredential, get_bearer_token_provider
 
-            # Support user-assigned managed identity with client ID
             azure_client_id = os.getenv("AZURE_CLIENT_ID")
+            azure_tenant_id = os.getenv("AZURE_TENANT_ID")
+
             if azure_client_id:
+                # Cloud: user-assigned managed identity
                 logger.info(f"Using Azure OpenAI Service API with Entra ID Auth (managed identity client ID: {azure_client_id[:8]}...).")
                 credential = DefaultAzureCredential(managed_identity_client_id=azure_client_id)
+            elif azure_tenant_id:
+                # Local dev: Azure CLI with explicit tenant
+                logger.info(f"Using Azure OpenAI Service API with AzureCliCredential (tenant: {azure_tenant_id[:8]}...).")
+                credential = AzureCliCredential(tenant_id=azure_tenant_id)
             else:
                 logger.info("Using Azure OpenAI Service API with Entra ID Auth.")
-                credential = DefaultAzureCredential()
+                credential = DefaultAzureCredential(exclude_managed_identity_credential=True)
 
             token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
             self.client = AzureOpenAI(

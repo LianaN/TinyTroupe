@@ -255,16 +255,20 @@ if config["OpenAI"].get("API_TYPE") == "azure":
             api_key=os.getenv("AZURE_OPENAI_KEY"),
             embed_batch_size=10)
     else:  # Use Entra ID Auth
-        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+        from azure.identity import DefaultAzureCredential, AzureCliCredential, get_bearer_token_provider
 
-        # Support user-assigned managed identity with client ID
         azure_client_id = os.getenv("AZURE_CLIENT_ID")
+        azure_tenant_id = os.getenv("AZURE_TENANT_ID")
+
         if azure_client_id:
             logging.info(f"Using Azure OpenAI Service API with Entra ID Auth (managed identity client ID: {azure_client_id[:8]}...) for embeddings.")
             credential = DefaultAzureCredential(managed_identity_client_id=azure_client_id)
+        elif azure_tenant_id:
+            logging.info(f"Using Azure OpenAI Service API with AzureCliCredential (tenant: {azure_tenant_id[:8]}...) for embeddings.")
+            credential = AzureCliCredential(tenant_id=azure_tenant_id)
         else:
             logging.info("Using Azure OpenAI Service API with Entra ID Auth for embeddings.")
-            credential = DefaultAzureCredential()
+            credential = DefaultAzureCredential(exclude_managed_identity_credential=True)
 
         token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
 
