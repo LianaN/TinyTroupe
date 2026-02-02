@@ -3,6 +3,7 @@ import json
 import chevron
 import pandas as pd
 from typing import Union, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from tinytroupe.extraction import logger
 from tinytroupe.agent import TinyPerson
@@ -51,7 +52,8 @@ class ResultsExtractor:
                                     situation:str =None,
                                     fields:list=None,
                                     fields_hints:dict=None,
-                                    verbose:bool=None):
+                                    verbose:bool=None,
+                                    max_workers:int=None):
         """
         Extracts results from a list of TinyPerson instances.
 
@@ -59,19 +61,41 @@ class ResultsExtractor:
             agents (List[TinyPerson]): The list of TinyPerson instances to extract results from.
             extraction_objective (str): The extraction objective.
             situation (str): The situation to consider.
-            fields (list, optional): The fields to extract. If None, the extractor will decide what names to use. 
+            fields (list, optional): The fields to extract. If None, the extractor will decide what names to use.
                 Defaults to None.
             fields_hints (dict, optional): Hints for the fields to extract. Maps field names to strings with the hints. Defaults to None.
             verbose (bool, optional): Whether to print debug messages. Defaults to False.
+            max_workers (int, optional): Number of parallel threads for extraction.
+                Defaults to min(len(agents), 10). Set to 1 for sequential execution.
 
-        
+
         """
-        results = []
-        for agent in agents:
-            result = self.extract_results_from_agent(agent, extraction_objective, situation, fields, fields_hints, verbose)
-            results.append(result)
-        
-        return results
+        if max_workers is None:
+            max_workers = min(len(agents), 10)
+
+        if max_workers <= 1:
+            # Sequential fallback
+            results = []
+            for agent in agents:
+                result = self.extract_results_from_agent(agent, extraction_objective, situation, fields, fields_hints, verbose)
+                results.append(result)
+            return results
+
+        # Parallel extraction using threads (I/O-bound API calls)
+        agent_results = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_idx = {
+                executor.submit(
+                    self.extract_results_from_agent,
+                    agent, extraction_objective, situation, fields, fields_hints, verbose
+                ): idx
+                for idx, agent in enumerate(agents)
+            }
+            for future in as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                agent_results[idx] = future.result()
+
+        return [agent_results[i] for i in range(len(agents))]
         
     def extract_results_from_agent(self, 
                         tinyperson:TinyPerson, 
